@@ -118,7 +118,7 @@ startBtn.onclick = ()=>{
       assigned.push({name:username,number});
       db.ref("assigned").set(assigned);
       alert(`${username}ට අංක ${number} ලැබුණා!`);
-      setTimeout(()=>{location.reload()},1000);
+      // Number stays on card permanently (no reload)
     };
     cardsContainer.appendChild(card);
   });
