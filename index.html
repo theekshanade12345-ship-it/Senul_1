@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Random Number Draw</title>
+<style>
+body { font-family: Arial; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; background:linear-gradient(135deg,#8EC5FC,#E0C3FC); margin:0;}
+h1 {color:#333;}
+.card-container {display:flex; flex-wrap:wrap; justify-content:center; max-width:500px; margin-top:20px;}
+.card {width:100px; height:140px; background:white; border-radius:10px; margin:10px; box-shadow:0 4px 8px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; font-size:30px; cursor:pointer; transition: transform 0.5s;}
+.flipped {background:#4CAF50; color:white; transform:rotateY(180deg);}
+.admin-panel {display:none; flex-direction:column; align-items:center; background:white; padding:20px; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.2); margin-top:20px;}
+input, button {padding:10px; border:none; border-radius:5px; margin:5px;}
+button {background-color:#4CAF50; color:white; cursor:pointer;}
+#login-section {display:flex; flex-direction:column; align-items:center; margin-top:20px;}
+</style>
+</head>
+<body>
+<h1>🎲 Live Random Number Draw 🎲</h1>
+
+<div id="name-section">
+<input type="text" id="username" placeholder="ඔයාගේ නම ලියන්න" />
+<button id="startBtn">Start</button>
+</div>
+
+<div class="card-container" id="cards" style="display:none;"></div>
+
+<div id="login-section">
+<input type="password" id="adminPass" placeholder="Admin Password" />
+<button id="loginBtn">Admin Login</button>
+</div>
+
+<div class="admin-panel" id="adminPanel">
+<h2>🧑‍💼 Admin Panel</h2>
+<div id="results"></div>
+<button id="resetBtn">🔄 Reset All</button>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyACPs6N80C3i8SS3aG7ahybThWvsPSf19o",
+  authDomain: "senul-80301.firebaseapp.com",
+  projectId: "senul-80301",
+  storageBucket: "senul-80301.firebasestorage.app",
+  messagingSenderId: "718343352275",
+  appId: "1:718343352275:web:7c0e22dd69981690df8926",
+  measurementId: "G-KFYWFF619M"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const allNumbers = [2,3,4,5,6,7,8,9,10];
+let availableNumbers = [...allNumbers];
+
+const startBtn = document.getElementById("startBtn");
+const usernameInput = document.getElementById("username");
+const cardsContainer = document.getElementById("cards");
+const adminPanel = document.getElementById("adminPanel");
+const results = document.getElementById("results");
+
+let assigned = [];
+
+// Load assigned data from Firebase
+function loadData(){
+  db.ref("assigned").once("value").then(snapshot=>{
+    assigned = snapshot.val() || [];
+    updateAvailableNumbers();
+    if(adminPanel.style.display==="flex"){
+      displayResults();
+    }
+  });
+}
+
+// Update available numbers
+function updateAvailableNumbers(){
+  availableNumbers = allNumbers.filter(n => !assigned.find(a=>a.number===n));
+}
+
+// Display admin results
+function displayResults(){
+  if(assigned.length===0){
+    results.innerHTML="<p>තවම කවුරුත් අංකයක් ගෙන නැහැ.</p>";
+  }else{
+    results.innerHTML = assigned.map(d=>`<p>${d.name} → ${d.number}</p>`).join("");
+  }
+}
+
+// Start button click
+startBtn.onclick = ()=>{
+  const username = usernameInput.value.trim();
+  if(!username) return alert("කරුණාකර නම ඇතුළත් කරන්න!");
+  document.getElementById("name-section").style.display="none";
+  cardsContainer.style.display="flex";
+  cardsContainer.innerHTML="";
+
+  updateAvailableNumbers();
+  availableNumbers.forEach(()=>{
+    const card = document.createElement("div");
+    card.className="card";
+    card.innerText="❓";
+    card.onclick=()=>{
+      if(card.classList.contains("flipped")) return;
+      if(availableNumbers.length===0) return alert("Numbers exhausted!");
+      const randomIndex = Math.floor(Math.random()*availableNumbers.length);
+      const number = availableNumbers[randomIndex];
+      availableNumbers.splice(randomIndex,1);
+      card.classList.add("flipped");
+      card.innerText=number;
+      assigned.push({name:username,number});
+      db.ref("assigned").set(assigned);
+      alert(`${username}ට අංක ${number} ලැබුණා!`);
+      setTimeout(()=>{location.reload()},1000);
+    };
+    cardsContainer.appendChild(card);
+  });
+};
+
+// Admin login
+document.getElementById("loginBtn").onclick=()=>{
+  const pass = document.getElementById("adminPass").value;
+  if(pass==="Senul123"){
+    document.getElementById("login-section").style.display="none";
+    adminPanel.style.display="flex";
+    loadData();
+  }else alert("Wrong Password!");
+};
+
+// Reset button
+document.getElementById("resetBtn").onclick=()=>{
+  if(confirm("ඔයාට ඇත්තම reset කරන්න ඕනෙද?")){
+    db.ref("assigned").set([]);
+    location.reload();
+  }
+};
+
+// Listen for live updates
+db.ref("assigned").on("value",snapshot=>{
+  assigned = snapshot.val() || [];
+  updateAvailableNumbers();
+  if(adminPanel.style.display==="flex") displayResults();
+});
+</script>
+</body>
+</html>
